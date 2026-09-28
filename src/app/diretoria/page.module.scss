@@ -1,0 +1,31 @@
+.pagina {
+  display: grid;
+  gap: var(--espaco-6);
+}
+
+.cabeca {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--espaco-4);
+}
+
+.titulo {
+  font-size: var(--texto-4xl);
+  font-weight: 900;
+}
+
+.descricao {
+  margin-top: var(--espaco-2);
+  color: var(--cor-texto-suave);
+}
+
+.secao {
+  display: grid;
+  gap: var(--espaco-4);
+}
+
+.subtitulo {
+  font-size: var(--texto-2xl);
+}

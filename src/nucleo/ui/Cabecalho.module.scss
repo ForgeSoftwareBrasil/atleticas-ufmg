@@ -1,0 +1,114 @@
+.cabecalho {
+  background: var(--cor-noite);
+  color: #fff;
+  // Filete dourado: o único "detalhe em dourado" permanente do site.
+  border-bottom: 2px solid var(--cor-dourado);
+}
+
+.interno {
+  max-width: var(--largura-conteudo);
+  margin: 0 auto;
+  padding: var(--espaco-3) var(--espaco-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espaco-3) var(--espaco-5);
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  color: #fff;
+  text-decoration: none;
+
+  img {
+    width: 44px;
+    height: auto;
+  }
+}
+
+.nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: var(--texto-xl);
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.instituicao {
+  padding-left: var(--espaco-3);
+  border-left: 1px solid rgb(255 255 255 / 0.25);
+  font-size: var(--texto-s);
+  color: rgb(255 255 255 / 0.75);
+}
+
+.navegacao {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--espaco-1) var(--espaco-4);
+}
+
+.link {
+  padding: var(--espaco-2) 0;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: rgb(255 255 255 / 0.85);
+  font-weight: 600;
+  font-size: var(--texto-s);
+  text-decoration: none;
+  cursor: pointer;
+
+  &:hover {
+    color: #fff;
+  }
+
+  &:focus-visible {
+    outline-color: var(--cor-dourado);
+  }
+}
+
+.ativo {
+  color: #fff;
+  border-bottom-color: var(--cor-dourado);
+}
+
+.sair {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+  padding-left: var(--espaco-4);
+  border-left: 1px solid rgb(255 255 255 / 0.2);
+}
+
+.usuario {
+  font-size: var(--texto-s);
+  color: rgb(255 255 255 / 0.6);
+}
+
+.chamada {
+  padding: var(--espaco-2) var(--espaco-4);
+  border-radius: var(--raio-controle);
+  background: var(--cor-dourado);
+  color: var(--cor-noite);
+  font-weight: 700;
+  font-size: var(--texto-s);
+  text-decoration: none;
+
+  &:hover {
+    background: var(--cor-dourado-claro);
+  }
+
+  &:focus-visible {
+    outline-color: #fff;
+  }
+}
+
+@media (max-width: 30rem) {
+  .instituicao {
+    display: none;
+  }
+}

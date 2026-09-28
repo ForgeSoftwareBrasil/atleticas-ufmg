@@ -1,0 +1,774 @@
+openapi: 3.1.0
+info:
+  title: API central de gestão de sócios de atléticas
+  version: 1.0.0
+  description: |
+    Contrato entre os sites das atléticas (fronts Next.js atuando como BFF) e a API central.
+    Regras de negócio, glossário e requisitos de segurança estão em `docs/api/README.md`.
+
+    Fonte da verdade no front: `src/nucleo/contrato/*.ts` (schemas Zod). Qualquer mudança
+    precisa ser feita nos dois lugares.
+
+    Convenções:
+    - Campos em português, camelCase.
+    - Valores monetários em **centavos**, como inteiro (R$ 60,00 → `6000`).
+    - Datas `AAAA-MM-DD`; data-hora ISO 8601 **com fuso** (`2026-09-27T14:03:00-03:00`); competência `AAAA-MM`.
+    - CPF e telefone trafegam **só com dígitos**.
+    - Erros sempre no formato `Erro`.
+servers:
+  - url: https://api.exemplo.com.br/v1
+    description: Produção (URL a definir pelo time do back)
+
+tags:
+  - name: Autenticação
+  - name: Usuários
+  - name: Atléticas
+  - name: Sócio
+    description: Rotas usadas pelo próprio usuário sobre a sua sociedade.
+  - name: Diretoria
+    description: Rotas restritas a usuários com papel DIRETOR na atlética do path (senão 403).
+
+security:
+  - bearer: []
+
+paths:
+  /auth/sessoes:
+    post:
+      operationId: entrar
+      tags: [Autenticação]
+      summary: Login
+      description: |
+        Retorna tokens de acesso e de renovação. Credenciais erradas → 401 `CREDENCIAIS_INVALIDAS`,
+        sem revelar se o email existe. Limite de tentativas → 429 `MUITAS_TENTATIVAS`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credenciais" }
+      responses:
+        "200":
+          description: Autenticado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tokens" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+        "429": { $ref: "#/components/responses/Erro" }
+    delete:
+      operationId: sair
+      tags: [Autenticação]
+      summary: Logout
+      description: Revoga o token de renovação associado à sessão do token de acesso enviado.
+      responses:
+        "204": { description: Sessão encerrada }
+        "401": { $ref: "#/components/responses/Erro" }
+
+  /auth/renovacoes:
+    post:
+      operationId: renovar
+      tags: [Autenticação]
+      summary: Renovar tokens
+      description: |
+        Troca um token de renovação válido por um novo par de tokens. O token de renovação usado
+        deve ser invalidado (rotação). Reuso de um token já rotacionado deve revogar a sessão inteira.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tokenRenovacao]
+              properties:
+                tokenRenovacao: { type: string }
+      responses:
+        "200":
+          description: Tokens renovados
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Tokens" }
+        "401": { $ref: "#/components/responses/Erro" }
+
+  /usuarios:
+    post:
+      operationId: cadastrarUsuario
+      tags: [Usuários]
+      summary: Cadastro de usuário
+      description: |
+        Cria a conta. Não cria sociedade (ver `POST /atleticas/{atleticaId}/sociedades`).
+        O usuário é global na plataforma: CPF e email são únicos entre todas as atléticas.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NovoUsuario" }
+      responses:
+        "201":
+          description: Usuário criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Usuario" }
+        "409":
+          description: "`CPF_JA_CADASTRADO` ou `EMAIL_JA_CADASTRADO`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Erro" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+
+  /usuarios/eu:
+    get:
+      operationId: eu
+      tags: [Usuários]
+      summary: Usuário autenticado
+      responses:
+        "200":
+          description: Dados do usuário e seus papéis por atlética
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Eu" }
+        "401": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}:
+    get:
+      operationId: obterAtletica
+      tags: [Atléticas]
+      summary: Configuração pública da atlética
+      security: []
+      parameters: [{ $ref: "#/components/parameters/atleticaId" }]
+      responses:
+        "200":
+          description: Atlética
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Atletica" }
+        "404": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades/minha:
+    get:
+      operationId: minhaSociedade
+      tags: [Sócio]
+      summary: Minha sociedade
+      description: |
+        Sociedade **mais recente** do usuário autenticado com a atlética (qualquer estado).
+        404 `NAO_ENCONTRADO` se o usuário nunca pediu sociedade.
+      parameters: [{ $ref: "#/components/parameters/atleticaId" }]
+      responses:
+        "200":
+          description: Sociedade com mensalidades
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "404": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades:
+    post:
+      operationId: solicitarSociedade
+      tags: [Sócio]
+      summary: Pedir sociedade
+      description: |
+        Cria uma sociedade PENDENTE para o usuário autenticado. Sem corpo.
+        409 `SOCIEDADE_JA_EXISTE` se já houver sociedade PENDENTE ou ATIVA.
+        Se a última estiver ENCERRADA, cria uma nova (o histórico da anterior é mantido).
+      parameters: [{ $ref: "#/components/parameters/atleticaId" }]
+      responses:
+        "201":
+          description: Sociedade pendente criada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "409": { $ref: "#/components/responses/Erro" }
+    get:
+      operationId: listarSociedades
+      tags: [Diretoria]
+      summary: Listar sociedades (paginado)
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/pagina" }
+        - { $ref: "#/components/parameters/tamanhoPagina" }
+        - { $ref: "#/components/parameters/busca" }
+        - { $ref: "#/components/parameters/estado" }
+        - { $ref: "#/components/parameters/situacao" }
+        - { $ref: "#/components/parameters/ordenarPor" }
+        - { $ref: "#/components/parameters/ordem" }
+      responses:
+        "200":
+          description: Página de sociedades. CPF sempre mascarado.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginaSociedades" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades/resumo:
+    get:
+      operationId: resumoDiretoria
+      tags: [Diretoria]
+      summary: Números do painel
+      parameters: [{ $ref: "#/components/parameters/atleticaId" }]
+      responses:
+        "200":
+          description: Resumo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResumoDiretoria" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades/exportacao:
+    get:
+      operationId: exportarSociedades
+      tags: [Diretoria]
+      summary: Exportar CSV
+      description: |
+        Mesmos filtros e ordenação da listagem, **sem paginação**, com CPF **completo**.
+        Formato: UTF-8 com BOM, separador `;`, quebra de linha CRLF (abre direto no Excel pt-BR).
+        Colunas, nesta ordem: Nome completo; CPF (formatado); Email; Telefone (formatado); Data de nascimento (DD/MM/AAAA);
+        Sociedade (Pendente/Ativa/Encerrada); Situação (Em dia/Inadimplente/vazio); Sócio desde (DD/MM/AAAA);
+        Mensalidades em atraso; Valor em atraso (R$, vírgula decimal).
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/busca" }
+        - { $ref: "#/components/parameters/estado" }
+        - { $ref: "#/components/parameters/situacao" }
+        - { $ref: "#/components/parameters/ordenarPor" }
+        - { $ref: "#/components/parameters/ordem" }
+      responses:
+        "200":
+          description: Arquivo CSV
+          headers:
+            Content-Disposition:
+              schema: { type: string, example: 'attachment; filename="socios-hermes-face-2026-09-27.csv"' }
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades/{sociedadeId}:
+    get:
+      operationId: detalheSociedade
+      tags: [Diretoria]
+      summary: Detalhe da sociedade
+      description: Dados completos do usuário (CPF inclusive) e todas as mensalidades.
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/sociedadeId" }
+      responses:
+        "200":
+          description: Sociedade
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+        "404": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades/{sociedadeId}/ativacao:
+    post:
+      operationId: ativarSociedade
+      tags: [Diretoria]
+      summary: Ativar sociedade pendente
+      description: |
+        PENDENTE → ATIVA. Define `socioDesde` = hoje (America/Sao_Paulo), gera a mensalidade da
+        competência atual e registra nela o pagamento informado — tudo numa transação.
+        409 `TRANSICAO_INVALIDA` se a sociedade não estiver PENDENTE.
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/sociedadeId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DadosPagamento" }
+      responses:
+        "200":
+          description: Sociedade ativada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+        "404": { $ref: "#/components/responses/Erro" }
+        "409": { $ref: "#/components/responses/Erro" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+
+  /atleticas/{atleticaId}/sociedades/{sociedadeId}/recusa:
+    post:
+      operationId: recusarSociedade
+      tags: [Diretoria]
+      summary: Recusar sociedade pendente
+      description: PENDENTE → ENCERRADA (`encerradaEm` = agora, `socioDesde` continua null). Sem corpo.
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/sociedadeId" }
+      responses:
+        "200":
+          description: Solicitação recusada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+        "404": { $ref: "#/components/responses/Erro" }
+        "409": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades/{sociedadeId}/encerramento:
+    post:
+      operationId: encerrarSociedade
+      tags: [Diretoria]
+      summary: Encerrar sociedade ativa
+      description: |
+        ATIVA → ENCERRADA. Deixa de gerar mensalidades; as existentes (pagas ou não) são mantidas.
+        Ainda sem tela no front do MVP, mas faz parte do contrato.
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/sociedadeId" }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                motivo: { type: string, maxLength: 280 }
+      responses:
+        "200":
+          description: Sociedade encerrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+        "404": { $ref: "#/components/responses/Erro" }
+        "409": { $ref: "#/components/responses/Erro" }
+
+  /atleticas/{atleticaId}/sociedades/{sociedadeId}/pagamentos:
+    post:
+      operationId: registrarPagamento
+      tags: [Diretoria]
+      summary: Registrar pagamento de mensalidades
+      description: |
+        Registra o mesmo pagamento (data, forma, observação) em uma ou mais mensalidades da sociedade,
+        atomicamente. `registradoPor` = usuário do token; `registradoEm` = agora.
+        404 se algum id não pertence à sociedade; 409 `MENSALIDADE_JA_PAGA` se alguma já tem pagamento.
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/sociedadeId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegistroPagamento" }
+      responses:
+        "200":
+          description: Pagamentos registrados; retorna a sociedade atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+        "404": { $ref: "#/components/responses/Erro" }
+        "409": { $ref: "#/components/responses/Erro" }
+        "422": { $ref: "#/components/responses/DadosInvalidos" }
+
+  /atleticas/{atleticaId}/sociedades/{sociedadeId}/mensalidades/{mensalidadeId}/pagamento:
+    delete:
+      operationId: desfazerPagamento
+      tags: [Diretoria]
+      summary: Desfazer registro de pagamento
+      description: |
+        Remove o pagamento da mensalidade (ela volta a EM_ABERTO ou ATRASADA). Recomenda-se manter
+        trilha de auditoria (quem desfez e quando) na API, mesmo que não exposta ao front.
+        409 `MENSALIDADE_NAO_PAGA` se não houver pagamento.
+      parameters:
+        - { $ref: "#/components/parameters/atleticaId" }
+        - { $ref: "#/components/parameters/sociedadeId" }
+        - name: mensalidadeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Pagamento desfeito; retorna a sociedade atualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SociedadeDetalhe" }
+        "401": { $ref: "#/components/responses/Erro" }
+        "403": { $ref: "#/components/responses/Erro" }
+        "404": { $ref: "#/components/responses/Erro" }
+        "409": { $ref: "#/components/responses/Erro" }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: Token de acesso de `POST /auth/sessoes`. Opaco para o front.
+
+  parameters:
+    atleticaId:
+      name: atleticaId
+      in: path
+      required: true
+      schema: { type: string, example: hermes-face }
+    sociedadeId:
+      name: sociedadeId
+      in: path
+      required: true
+      schema: { type: string }
+    pagina:
+      name: pagina
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    tamanhoPagina:
+      name: tamanhoPagina
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    busca:
+      name: busca
+      in: query
+      description: |
+        Termo livre, até 100 caracteres. Casa (sem diferenciar maiúsculas nem acentos) com nome ou email;
+        se tiver 3+ dígitos, casa também com trechos do CPF.
+      schema: { type: string, maxLength: 100 }
+    estado:
+      name: estado
+      in: query
+      schema: { $ref: "#/components/schemas/EstadoSociedade" }
+    situacao:
+      name: situacao
+      in: query
+      description: Filtrar por situação implica sociedades ATIVAS.
+      schema: { $ref: "#/components/schemas/Situacao" }
+    ordenarPor:
+      name: ordenarPor
+      in: query
+      description: Desempate sempre por nome ascendente. `socioDesde` nulo vai para o fim na ordem ascendente.
+      schema:
+        type: string
+        enum: [nome, socioDesde, mensalidadesEmAtraso, solicitadaEm]
+        default: nome
+    ordem:
+      name: ordem
+      in: query
+      schema: { type: string, enum: [asc, desc], default: asc }
+
+  responses:
+    Erro:
+      description: Erro
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+    DadosInvalidos:
+      description: "`DADOS_INVALIDOS` com `campos` preenchido"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Erro" }
+          example:
+            codigo: DADOS_INVALIDOS
+            mensagem: Há campos inválidos
+            campos:
+              cpf: CPF inválido
+              dataNascimento: É preciso ter pelo menos 16 anos
+
+  schemas:
+    Data:
+      type: string
+      format: date
+      example: "2026-09-10"
+    DataHora:
+      type: string
+      format: date-time
+      description: ISO 8601 com fuso explícito.
+      example: "2026-09-27T14:03:00-03:00"
+    Competencia:
+      type: string
+      pattern: "^\\d{4}-(0[1-9]|1[0-2])$"
+      example: "2026-09"
+    Centavos:
+      type: integer
+      minimum: 0
+      example: 6000
+
+    EstadoSociedade:
+      type: string
+      enum: [PENDENTE, ATIVA, ENCERRADA]
+    Situacao:
+      type: string
+      enum: [EM_DIA, INADIMPLENTE]
+    StatusMensalidade:
+      type: string
+      enum: [PAGA, EM_ABERTO, ATRASADA]
+    FormaPagamento:
+      type: string
+      enum: [PIX, DINHEIRO]
+    Papel:
+      type: string
+      enum: [DIRETOR]
+
+    Erro:
+      type: object
+      required: [codigo, mensagem]
+      properties:
+        codigo:
+          type: string
+          enum:
+            - DADOS_INVALIDOS
+            - CREDENCIAIS_INVALIDAS
+            - NAO_AUTENTICADO
+            - SEM_PERMISSAO
+            - NAO_ENCONTRADO
+            - CPF_JA_CADASTRADO
+            - EMAIL_JA_CADASTRADO
+            - SOCIEDADE_JA_EXISTE
+            - TRANSICAO_INVALIDA
+            - MENSALIDADE_JA_PAGA
+            - MENSALIDADE_NAO_PAGA
+            - MUITAS_TENTATIVAS
+            - ERRO_INTERNO
+        mensagem:
+          type: string
+          description: Texto em português, apto a ser exibido ao usuário.
+        campos:
+          type: object
+          description: Só em DADOS_INVALIDOS. Nome do campo → mensagem.
+          additionalProperties: { type: string }
+
+    Credenciais:
+      type: object
+      required: [email, senha]
+      properties:
+        email: { type: string, format: email }
+        senha: { type: string, minLength: 1 }
+
+    Tokens:
+      type: object
+      required: [tokenAcesso, tokenRenovacao, expiraEm]
+      properties:
+        tokenAcesso:
+          type: string
+          description: Curta duração (recomendado 15 min).
+        tokenRenovacao:
+          type: string
+          description: Recomendado 7 dias; rotacionado a cada renovação.
+        expiraEm:
+          $ref: "#/components/schemas/DataHora"
+          description: Quando o tokenAcesso expira. O BFF renova ~60 s antes.
+
+    NovoUsuario:
+      type: object
+      required: [nomeCompleto, cpf, email, telefone, dataNascimento, senha, aceiteTermos]
+      properties:
+        nomeCompleto:
+          type: string
+          minLength: 5
+          maxLength: 120
+          description: Nome e sobrenome (ao menos duas palavras). Enviado com trim.
+        cpf:
+          type: string
+          pattern: "^\\d{11}$"
+          description: Só dígitos, com dígitos verificadores válidos.
+        email:
+          type: string
+          format: email
+          description: Enviado em minúsculas e com trim.
+        telefone:
+          type: string
+          pattern: "^[1-9][1-9]9\\d{8}$"
+          description: Celular brasileiro, só dígitos (DDD + 9 + 8 dígitos).
+        dataNascimento:
+          $ref: "#/components/schemas/Data"
+          description: Idade mínima de 16 anos na data de hoje (America/Sao_Paulo).
+        senha:
+          type: string
+          minLength: 8
+          maxLength: 72
+          description: Deve conter letras e números.
+        aceiteTermos:
+          type: boolean
+          const: true
+          description: Aceite da política de privacidade. A API deve registrar data/hora do aceite.
+
+    Usuario:
+      type: object
+      required: [id, nomeCompleto, cpf, email, telefone, dataNascimento, criadoEm]
+      properties:
+        id: { type: string }
+        nomeCompleto: { type: string }
+        cpf: { type: string, pattern: "^\\d{11}$" }
+        email: { type: string }
+        telefone: { type: string, pattern: "^\\d{10,11}$" }
+        dataNascimento: { $ref: "#/components/schemas/Data" }
+        criadoEm: { $ref: "#/components/schemas/DataHora" }
+
+    UsuarioResumo:
+      type: object
+      description: Usuário em listagens — CPF mascarado.
+      required: [id, nomeCompleto, cpfMascarado, email, telefone, dataNascimento]
+      properties:
+        id: { type: string }
+        nomeCompleto: { type: string }
+        cpfMascarado: { type: string, example: "***.456.789-**" }
+        email: { type: string }
+        telefone: { type: string }
+        dataNascimento: { $ref: "#/components/schemas/Data" }
+
+    Eu:
+      allOf:
+        - $ref: "#/components/schemas/Usuario"
+        - type: object
+          required: [papeis]
+          properties:
+            papeis:
+              type: array
+              items:
+                type: object
+                required: [atleticaId, papel]
+                properties:
+                  atleticaId: { type: string }
+                  papel: { $ref: "#/components/schemas/Papel" }
+
+    Atletica:
+      type: object
+      required: [id, nome, apelido, valorMensalidade, diaVencimento, chavePix, whatsappDiretoria]
+      properties:
+        id: { type: string, example: hermes-face }
+        nome: { type: string, example: Associação Atlética Acadêmica Hermes }
+        apelido: { type: string, example: FACE }
+        valorMensalidade: { $ref: "#/components/schemas/Centavos" }
+        diaVencimento: { type: integer, minimum: 1, maximum: 28, example: 10 }
+        chavePix: { type: string }
+        whatsappDiretoria:
+          type: string
+          pattern: "^\\d{12,13}$"
+          description: "Com DDI, só dígitos. Ex.: 5531999998888."
+
+    Pagamento:
+      type: object
+      required: [dataPagamento, formaPagamento, observacao, registradoPor, registradoEm]
+      properties:
+        dataPagamento: { $ref: "#/components/schemas/Data" }
+        formaPagamento: { $ref: "#/components/schemas/FormaPagamento" }
+        observacao: { type: [string, "null"] }
+        registradoPor:
+          type: object
+          required: [id, nomeCompleto]
+          properties:
+            id: { type: string }
+            nomeCompleto: { type: string }
+        registradoEm: { $ref: "#/components/schemas/DataHora" }
+
+    Mensalidade:
+      type: object
+      required: [id, competencia, valor, vencimento, status, pagamento]
+      properties:
+        id: { type: string }
+        competencia: { $ref: "#/components/schemas/Competencia" }
+        valor:
+          $ref: "#/components/schemas/Centavos"
+          description: Valor vigente quando a mensalidade foi gerada.
+        vencimento: { $ref: "#/components/schemas/Data" }
+        status:
+          $ref: "#/components/schemas/StatusMensalidade"
+          description: Calculado na leitura — ver README, seção "Status e situação".
+        pagamento:
+          oneOf:
+            - $ref: "#/components/schemas/Pagamento"
+            - type: "null"
+
+    SociedadeBase:
+      type: object
+      required:
+        [id, atleticaId, estado, situacao, solicitadaEm, socioDesde, encerradaEm, mensalidadesEmAtraso, valorEmAtraso]
+      properties:
+        id: { type: string }
+        atleticaId: { type: string }
+        estado: { $ref: "#/components/schemas/EstadoSociedade" }
+        situacao:
+          description: Só para ATIVA; null nos demais estados.
+          oneOf:
+            - $ref: "#/components/schemas/Situacao"
+            - type: "null"
+        solicitadaEm: { $ref: "#/components/schemas/DataHora" }
+        socioDesde:
+          description: Data da ativação. null enquanto PENDENTE ou se recusada.
+          oneOf:
+            - $ref: "#/components/schemas/Data"
+            - type: "null"
+        encerradaEm:
+          oneOf:
+            - $ref: "#/components/schemas/DataHora"
+            - type: "null"
+        mensalidadesEmAtraso:
+          type: integer
+          minimum: 0
+          description: Quantidade de mensalidades ATRASADAS.
+        valorEmAtraso:
+          $ref: "#/components/schemas/Centavos"
+          description: Soma dos valores das mensalidades ATRASADAS.
+
+    SociedadeResumo:
+      allOf:
+        - $ref: "#/components/schemas/SociedadeBase"
+        - type: object
+          required: [usuario]
+          properties:
+            usuario: { $ref: "#/components/schemas/UsuarioResumo" }
+
+    SociedadeDetalhe:
+      allOf:
+        - $ref: "#/components/schemas/SociedadeBase"
+        - type: object
+          required: [usuario, mensalidades]
+          properties:
+            usuario: { $ref: "#/components/schemas/Usuario" }
+            mensalidades:
+              type: array
+              description: Da competência mais recente para a mais antiga.
+              items: { $ref: "#/components/schemas/Mensalidade" }
+
+    PaginaSociedades:
+      type: object
+      required: [itens, pagina, tamanhoPagina, totalItens, totalPaginas]
+      properties:
+        itens:
+          type: array
+          items: { $ref: "#/components/schemas/SociedadeResumo" }
+        pagina: { type: integer, minimum: 1 }
+        tamanhoPagina: { type: integer, minimum: 1 }
+        totalItens: { type: integer, minimum: 0 }
+        totalPaginas: { type: integer, minimum: 0 }
+
+    ResumoDiretoria:
+      type: object
+      required: [ativas, emDia, inadimplentes, pendentes, valorEmAtraso]
+      properties:
+        ativas: { type: integer, minimum: 0 }
+        emDia: { type: integer, minimum: 0 }
+        inadimplentes: { type: integer, minimum: 0 }
+        pendentes: { type: integer, minimum: 0 }
+        valorEmAtraso: { $ref: "#/components/schemas/Centavos" }
+
+    DadosPagamento:
+      type: object
+      required: [dataPagamento, formaPagamento]
+      properties:
+        dataPagamento:
+          $ref: "#/components/schemas/Data"
+          description: Não pode ser futura (America/Sao_Paulo).
+        formaPagamento: { $ref: "#/components/schemas/FormaPagamento" }
+        observacao: { type: string, maxLength: 280 }
+
+    RegistroPagamento:
+      allOf:
+        - $ref: "#/components/schemas/DadosPagamento"
+        - type: object
+          required: [mensalidadeIds]
+          properties:
+            mensalidadeIds:
+              type: array
+              minItems: 1
+              items: { type: string }

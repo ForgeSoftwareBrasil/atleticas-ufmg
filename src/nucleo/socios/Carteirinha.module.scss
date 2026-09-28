@@ -1,0 +1,179 @@
+// A moldura é o container: as medidas internas (cqi) escalam com a largura do cartão.
+.moldura {
+  margin: 0;
+  width: 100%;
+  max-width: 27rem;
+  container-type: inline-size;
+}
+
+.carteirinha {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  aspect-ratio: 85.6 / 54;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 7cqi 7cqi 6cqi;
+  border-radius: var(--raio-carteirinha);
+  background: var(--cor-noite);
+  color: #fff;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.08) inset,
+    0 24px 48px -24px rgb(12 26 63 / 0.55),
+    0 2px 6px rgb(12 26 63 / 0.25);
+
+  // Filete dourado interno, como o hot stamping de um cartão impresso.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 3.2cqi;
+    border: 1px solid color-mix(in srgb, var(--cor-dourado) 70%, transparent);
+    border-radius: calc(var(--raio-carteirinha) - 6px);
+    pointer-events: none;
+    z-index: 2;
+  }
+}
+
+// O disco azul do escudo, grande e cortado pela borda do cartão.
+.disco {
+  position: absolute;
+  z-index: -1;
+  width: 96cqi;
+  aspect-ratio: 1;
+  right: -52cqi;
+  top: -24cqi;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cor-azul) 45%, var(--cor-noite));
+  box-shadow: 0 0 0 6cqi color-mix(in srgb, var(--cor-azul) 18%, var(--cor-noite));
+}
+
+.escudo {
+  position: absolute;
+  z-index: -1;
+  width: 46cqi;
+  height: auto;
+  right: -6cqi;
+  top: 5cqi;
+  filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.35));
+}
+
+.topo {
+  display: flex;
+  align-items: baseline;
+  gap: 2.4cqi;
+}
+
+.atletica {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: 7.2cqi;
+  line-height: 1;
+  color: var(--cor-dourado-claro);
+}
+
+.instituicao {
+  font-size: 3.2cqi;
+  color: rgb(255 255 255 / 0.7);
+}
+
+.corpo {
+  align-self: end;
+  display: grid;
+  gap: 1cqi;
+  max-width: 56cqi;
+  padding-bottom: 3.5cqi;
+}
+
+.tipo {
+  font-size: 3.2cqi;
+  color: var(--cor-dourado);
+  font-weight: 600;
+}
+
+.nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: 8.4cqi;
+  line-height: 0.95;
+  text-wrap: balance;
+  text-shadow: 0 2px 10px rgb(12 26 63 / 0.6);
+}
+
+.dados {
+  display: flex;
+  gap: 7cqi;
+  margin: 0;
+  padding-top: 3cqi;
+  border-top: 1px solid rgb(255 255 255 / 0.18);
+  max-width: 70cqi;
+
+  dt {
+    font-size: 2.8cqi;
+    color: rgb(255 255 255 / 0.65);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 4cqi;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// Carimbo de situação, batido em diagonal sobre o cartão.
+.carimbo {
+  position: absolute;
+  z-index: 3;
+  right: 4cqi;
+  top: 17cqi;
+  padding: 1.6cqi 3.2cqi;
+  border: 0.8cqi double currentColor;
+  border-radius: 1.2cqi;
+  font-family: var(--fonte-titulo);
+  font-weight: 800;
+  font-size: 5.2cqi;
+  line-height: 1;
+  transform: rotate(-9deg);
+  background: rgb(255 255 255 / 0.92);
+  mix-blend-mode: normal;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.25);
+}
+
+.inadimplente {
+  color: var(--cor-inadimplente);
+}
+
+.pendente {
+  color: var(--cor-pendente);
+}
+
+.neutro {
+  color: var(--cor-neutro);
+}
+
+.exemplo {
+  transform: rotate(-4deg);
+}
+
+// O único momento de movimento do site: a carteirinha chega e o carimbo é batido.
+.animada {
+  animation: chegar 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  .carimbo {
+    animation: carimbar 380ms cubic-bezier(0.3, 1.5, 0.5, 1) 560ms both;
+  }
+}
+
+@keyframes chegar {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotate(1.5deg);
+  }
+}
+
+@keyframes carimbar {
+  from {
+    opacity: 0;
+    transform: rotate(-16deg) scale(1.6);
+  }
+}

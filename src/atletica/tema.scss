@@ -1,0 +1,32 @@
+// Identidade visual da Hermes (FACE UFMG). Cores tiradas do próprio escudo:
+// o azul do fundo, o azul-noite do anel e o dourado das asas.
+// O núcleo só conhece estas variáveis — outra atlética troca este arquivo.
+
+:root {
+  --cor-noite: #0c1a3f;
+  --cor-noite-elevada: #16295c;
+  --cor-azul: #0a4fd0;
+  --cor-azul-escuro: #083c9e;
+  --cor-azul-tinta: #e7eefc;
+  --cor-dourado: #c9a15a;
+  --cor-dourado-claro: #ecd9ab;
+  --cor-dourado-texto: #7f6027;
+
+  --cor-fundo: #f2f5fb;
+  --cor-superficie: #ffffff;
+  --cor-texto: #0c1a3f;
+  --cor-texto-suave: #4a5878;
+  --cor-borda: #d6deed;
+  --cor-borda-forte: #aebbd6;
+
+  --cor-em-dia: #16784a;
+  --cor-em-dia-fundo: #e2f3e9;
+  --cor-inadimplente: #b3261e;
+  --cor-inadimplente-fundo: #fce8e6;
+  --cor-pendente: #7f6027;
+  --cor-pendente-fundo: #f8efd9;
+  --cor-neutro: #5b6780;
+  --cor-neutro-fundo: #eceff5;
+
+  --cor-foco: #0a4fd0;
+}

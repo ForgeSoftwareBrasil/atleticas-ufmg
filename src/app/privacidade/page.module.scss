@@ -1,0 +1,22 @@
+.texto {
+  max-width: calc(var(--largura-texto) + 2rem);
+  display: grid;
+  gap: var(--espaco-4);
+
+  h1 {
+    font-size: var(--texto-4xl);
+    font-weight: 900;
+  }
+
+  h2 {
+    font-size: var(--texto-xl);
+    margin-top: var(--espaco-4);
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: grid;
+    gap: var(--espaco-2);
+  }
+}

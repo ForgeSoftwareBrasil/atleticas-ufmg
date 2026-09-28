@@ -1,0 +1,142 @@
+.capa {
+  background: var(--cor-noite);
+  color: #fff;
+  overflow: hidden;
+}
+
+.capaInterno {
+  max-width: var(--largura-conteudo);
+  margin: 0 auto;
+  padding: var(--espaco-8) var(--espaco-4) var(--espaco-8);
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--espaco-7);
+}
+
+.chamada {
+  display: grid;
+  gap: var(--espaco-5);
+  justify-items: start;
+}
+
+.titulo {
+  font-size: clamp(3.4rem, 9vw, var(--texto-5xl));
+  font-weight: 900;
+  line-height: 0.88;
+  font-variation-settings: "opsz" 72;
+  color: #fff;
+  // Sublinhado dourado curto sob o título — a "asa" do Hermes, sem ilustrar.
+  padding-bottom: var(--espaco-5);
+  background: linear-gradient(var(--cor-dourado), var(--cor-dourado)) left bottom / 4.5rem 4px no-repeat;
+}
+
+.subtitulo {
+  max-width: 30rem;
+  font-size: var(--texto-l);
+  line-height: 1.5;
+  color: rgb(255 255 255 / 0.82);
+}
+
+.botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--espaco-3);
+  padding-top: var(--espaco-2);
+}
+
+.vitrine {
+  display: flex;
+  justify-content: center;
+  padding: var(--espaco-5) 0;
+}
+
+.detalhes {
+  max-width: var(--largura-conteudo);
+  margin: 0 auto;
+  padding: var(--espaco-8) var(--espaco-4) 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--espaco-7);
+}
+
+.bloco {
+  display: grid;
+  gap: var(--espaco-5);
+  align-content: start;
+}
+
+.tituloBloco {
+  font-size: var(--texto-3xl);
+  font-weight: 800;
+}
+
+.beneficios {
+  display: grid;
+  gap: var(--espaco-5);
+  margin: 0;
+
+  div {
+    padding-left: var(--espaco-4);
+    border-left: 3px solid var(--cor-dourado);
+  }
+
+  dt {
+    font-weight: 700;
+    font-size: var(--texto-l);
+  }
+
+  dd {
+    margin: var(--espaco-1) 0 0;
+    max-width: 32rem;
+    color: var(--cor-texto-suave);
+  }
+}
+
+// Sequência real (cadastro → pagamento → confirmação), por isso numerada.
+.passos {
+  counter-reset: passo;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--espaco-5);
+
+  li {
+    counter-increment: passo;
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    column-gap: var(--espaco-3);
+
+    &::before {
+      content: counter(passo);
+      grid-row: span 2;
+      font-family: var(--fonte-titulo);
+      font-weight: 900;
+      font-size: var(--texto-3xl);
+      line-height: 1;
+      color: var(--cor-azul);
+    }
+  }
+
+  strong {
+    font-size: var(--texto-l);
+  }
+
+  span {
+    color: var(--cor-texto-suave);
+  }
+}
+
+@media (max-width: 52rem) {
+  .capaInterno {
+    grid-template-columns: 1fr;
+    padding-top: var(--espaco-7);
+    padding-bottom: var(--espaco-7);
+  }
+
+  .detalhes {
+    grid-template-columns: 1fr;
+    padding-top: var(--espaco-7);
+  }
+}

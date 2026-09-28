@@ -1,0 +1,97 @@
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espaco-2);
+  min-height: 2.75rem;
+  padding: 0 var(--espaco-5);
+  border: 1.5px solid transparent;
+  border-radius: var(--raio-controle);
+  font-weight: 650;
+  font-size: var(--texto-m);
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+
+  &:disabled,
+  &[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.pequeno {
+  min-height: 2.25rem;
+  padding: 0 var(--espaco-4);
+  font-size: var(--texto-s);
+}
+
+.primario {
+  background: var(--cor-azul);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: var(--cor-azul-escuro);
+  }
+}
+
+// Dourado: reservado à ação principal sobre fundo azul-noite.
+.destaque {
+  background: var(--cor-dourado);
+  color: var(--cor-noite);
+
+  &:hover:not(:disabled) {
+    background: var(--cor-dourado-claro);
+  }
+}
+
+.secundario {
+  background: transparent;
+  border-color: var(--cor-borda-forte);
+  color: var(--cor-texto);
+
+  &:hover:not(:disabled) {
+    border-color: var(--cor-azul);
+    color: var(--cor-azul);
+  }
+}
+
+// Contorno claro para uso sobre fundo escuro.
+.claro {
+  background: transparent;
+  border-color: rgb(255 255 255 / 0.4);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    border-color: #fff;
+  }
+}
+
+.perigo {
+  background: transparent;
+  border-color: var(--cor-inadimplente);
+  color: var(--cor-inadimplente);
+
+  &:hover:not(:disabled) {
+    background: var(--cor-inadimplente-fundo);
+  }
+}
+
+.fantasma {
+  background: transparent;
+  color: var(--cor-azul);
+  padding: 0 var(--espaco-2);
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+}
+
+.largo {
+  width: 100%;
+}

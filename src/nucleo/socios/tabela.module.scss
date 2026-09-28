@@ -1,0 +1,58 @@
+// Tabelas de dados: densas, alinhadas, números tabulares. Sem zebra; linhas finas.
+
+.rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-painel);
+  background: var(--cor-superficie);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--texto-s);
+  font-variant-numeric: tabular-nums;
+
+  th,
+  td {
+    padding: var(--espaco-3) var(--espaco-4);
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--cor-borda);
+    white-space: nowrap;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    background: var(--cor-superficie);
+    font-weight: 600;
+    font-size: var(--texto-xs);
+    color: var(--cor-texto-suave);
+    border-bottom-color: var(--cor-borda-forte);
+  }
+
+  tbody th {
+    font-weight: 600;
+  }
+
+  tbody tr:last-child > * {
+    border-bottom: 0;
+  }
+}
+
+.numero {
+  text-align: right !important;
+}
+
+.suave {
+  color: var(--cor-texto-suave);
+}
+
+.vazio {
+  padding: var(--espaco-6) var(--espaco-5);
+  border: 1px dashed var(--cor-borda-forte);
+  border-radius: var(--raio-painel);
+  color: var(--cor-texto-suave);
+  text-align: center;
+}
